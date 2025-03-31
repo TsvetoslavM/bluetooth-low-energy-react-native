@@ -2,14 +2,14 @@ import React from "react";
 import { useState } from "react";
 import { Button, Text, View } from "react-native";
 import { BleManager, Device, BleError, Characteristic } from "react-native-ble-plx";
-import styles from "../assets/styles/styles";
+import styles from "@assets/styles/styles";
 import ParallaxScrollView from "./ParallaxScrollView";
 import { Base64 } from "js-base64";
 
 export const bleManager = new BleManager();
 let showDevicesWithoutName = false;
-const DATA_SERVICE_UUID = "9800"; // * Get from the device manufacturer - 9800 for the BLE iOs Tester App "MyBLESim"
-const CHARACTERISTIC_UUID = "9801"; // * Get from the device manufacturer - 9801-9805 for the BLE iOs Tester App "MyBLESim"
+const DATA_SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"; // * Get from the device manufacturer - 9800 for the BLE iOs Tester App "MyBLESim"
+const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"; // * Get from the device manufacturer - 9801-9805 for the BLE iOs Tester App "MyBLESim"
 
 export default function MainPage() {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
@@ -36,10 +36,31 @@ export default function MainPage() {
     });
   }
 
+  function stopScanning() {
+    console.log("Stop Scanning");
+    bleManager.stopDeviceScan();
+  }
+
   // Decoding the data received from the device and defining the callback
   async function startStreamingData(device: Device) {
     if (device) {
       device.monitorCharacteristicForService(DATA_SERVICE_UUID, CHARACTERISTIC_UUID, onDataUpdate);
+    } else {
+      console.log("No Device Connected");
+    }
+  }
+  async function sendDataToDevice(device: Device, data: string) {
+    if (device) {
+      try {
+        await device.writeCharacteristicWithResponseForService(
+          DATA_SERVICE_UUID,
+          CHARACTERISTIC_UUID,
+          Base64.encode(data)
+        );
+        console.log("Data sent successfully:", data);
+      } catch (error) {
+        console.error("Error sending data", error);
+      }
     } else {
       console.log("No Device Connected");
     }
@@ -71,7 +92,7 @@ export default function MainPage() {
       setConnectedDevice(deviceConnection);
       await deviceConnection.discoverAllServicesAndCharacteristics();
       bleManager.stopDeviceScan();
-      startStreamingData(deviceConnection);
+      // Remove the startStreamingData call
     } catch (e) {
       console.error("FAILED TO CONNECT", e);
     }
@@ -84,14 +105,8 @@ export default function MainPage() {
         <Text style={styles.textTitle}>Listing Devices</Text>
         <View style={styles.containerButtons}>
           <Button title="Start" onPress={scanForPeripherals} />
-          {/* TODO: Implement this button
-        <Button
-          title="Stop"
-          onPress={() => {
-            console.log("Stop Scanning");
-            bleManager.stopDeviceScan;
-          }}
-        /> */}
+          
+          <Button title="Stop" onPress={stopScanning} />
           <Button title="Clear" onPress={() => setAllDevices([])}></Button>
           <Button
             title={showDevicesWithoutName ? "Hide Nameless" : "Show Nameless"}
@@ -127,7 +142,10 @@ export default function MainPage() {
           <View style={styles.containerDevices}>
             <Text>ID: {connectedDevice.id}</Text>
             <Text>Name: {connectedDevice.name}</Text>
-            <Text>Data Received: {dataReceived} </Text>
+            <Button 
+              title="Send Test Data" 
+              onPress={() => sendDataToDevice(connectedDevice, "Hello Yasen izkupi se")} 
+            />
           </View>
         </View>
       )}
